@@ -1,6 +1,10 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-import sv_ttk
+try:
+    import sv_ttk
+    SV_TTK_AVAILABLE = True
+except ImportError:
+    SV_TTK_AVAILABLE = False
 import datetime
 from database.database import DatabaseManager
 from reports.report_generator import ReportGenerator
@@ -22,7 +26,8 @@ class MainApp(tk.Tk):
         # =========================
         # THEME & STYLING SETUP
         # =========================
-        sv_ttk.set_theme("light")
+        if SV_TTK_AVAILABLE:
+            sv_ttk.set_theme("light")
         self.configure(background=COLOR_BG)
         
         self.style = ttk.Style()
