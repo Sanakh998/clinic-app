@@ -1,0 +1,447 @@
+from tkinter import messagebox
+import sqlite3
+import datetime
+import csv
+import sys
+
+# ==========================================
+# DATABASE MANAGER
+# ==========================================
+class DatabaseManager:
+    def __init__(self, db_file):
+        self.db_file = db_file
+        self.init_db()
+
+    def get_connection(self):
+        """Creates a database connection with foreign key support."""
+        try:
+            conn = sqlite3.connect(self.db_file)
+            conn.execute("PRAGMA foreign_keys = 1")
+            return conn
+        except sqlite3.Error as e:
+            messagebox.showerror("Database Error", f"Could not connect to database: {e}")
+            sys.exit(1)
+
+    def init_db(self):
+        """Initializes the database schema if it doesn't exist."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        # Patients Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS patients (
+                patient_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                phone TEXT,
+                age INTEGER,
+                gender TEXT,
+                address TEXT,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        # Visits Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS visits (
+                visit_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patient_id INTEGER NOT NULL,
+                visit_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                complaints TEXT,
+                medicine TEXT,
+                fees INTEGER,
+                remarks TEXT,
+                FOREIGN KEY (patient_id) REFERENCES patients (patient_id) ON DELETE CASCADE
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+
+    # --- Patient Operations ---
+    def add_patient(self, name, phone, age, gender, address, notes):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                INSERT INTO patients (name, phone, age, gender, address, notes)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (name, phone, age, gender, address, notes))
+            conn.commit()
+            return cursor.lastrowid
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", str(e))
+            return None
+        finally:
+            conn.close()
+
+    def update_patient(self, p_id, name, phone, age, gender, address, notes):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                UPDATE patients 
+                SET name=?, phone=?, age=?, gender=?, address=?, notes=?
+                WHERE patient_id=?
+            ''', (name, phone, age, gender, address, notes, p_id))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", str(e))
+            return False
+        finally:
+            conn.close()
+
+    def delete_patient(self, p_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('DELETE FROM patients WHERE patient_id = ?', (p_id,))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", str(e))
+            return False
+        finally:
+            conn.close()
+
+    def get_recent_patients(self, limit=15):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM patients ORDER BY created_at DESC LIMIT ?', (limit,))
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
+    def get_recent_interacted_patients(self, limit=20):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT 
+                p.patient_id,
+                p.name,
+                p.phone,
+                MAX(v.visit_date) as last_visit
+            FROM patients p
+            LEFT JOIN visits v ON p.patient_id = v.patient_id
+            GROUP BY p.patient_id
+            ORDER BY last_visit DESC NULLS LAST
+            LIMIT ?
+        """, (limit,))
+
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
+
+    def get_all_patients(self):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM patients ORDER BY patient_id DESC")
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    
+    def get_total_patients_count(self):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM patients")
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
+
+    def search_patients(self, query):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        search_term = f"%{query}%"
+        cursor.execute('''
+            SELECT * FROM patients 
+            WHERE name LIKE ? OR phone LIKE ? 
+            ORDER BY name ASC
+        ''', (search_term, search_term))
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
+    def get_patient_by_id(self, p_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM patients WHERE patient_id = ?', (p_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return row
+
+    # --- Visit Operations ---
+    def add_visit(self, patient_id, complaints, medicine, fees, remarks, date_str):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                INSERT INTO visits (patient_id, complaints, medicine, fees, remarks, visit_date)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (patient_id, complaints, medicine, fees, remarks, date_str))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", str(e))
+            return False
+        finally:
+            conn.close()
+
+    def update_visit(self, visit_id, complaints, medicine, fees, remarks, date_str):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                UPDATE visits 
+                SET complaints=?, medicine=?, fees=?, remarks=?, visit_date=?
+                WHERE visit_id=?
+            ''', (complaints, medicine, fees, remarks, date_str, visit_id))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", str(e))
+            return False
+        finally:
+            conn.close()
+
+    def get_visits(self, patient_id, limit=None):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        sql = '''
+            SELECT * FROM visits 
+            WHERE patient_id = ? 
+            ORDER BY visit_date DESC
+        '''
+        if limit:
+            sql += f" LIMIT {limit}"
+            
+        cursor.execute(sql, (patient_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    
+    def get_all_visits_with_patient(self):
+        """
+        Returns all visits with patient name.
+        Order: latest visit first
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                v.visit_id,
+                v.patient_id,
+                v.visit_date,
+                v.complaints,
+                v.medicine,
+                v.fees,
+                v.remarks,
+                p.name
+            FROM visits v
+            JOIN patients p ON v.patient_id = p.patient_id
+            ORDER BY v.visit_date DESC
+        """)
+
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    
+    def get_visits_by_date_range(self, start_date, end_date):
+        """
+        start_date, end_date: 'YYYY-MM-DD'
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                v.visit_id,
+                v.patient_id,
+                v.visit_date,
+                v.complaints,
+                v.medicine,
+                v.fees,
+                v.remarks,
+                p.name
+            FROM visits v
+            JOIN patients p ON v.patient_id = p.patient_id
+            WHERE DATE(v.visit_date) BETWEEN ? AND ?
+            ORDER BY v.visit_date DESC
+        """, (start_date, end_date))
+
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
+
+
+    def get_today_visits(self):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        today = datetime.date.today().strftime("%Y-%m-%d")
+
+        cursor.execute("""
+            SELECT 
+                visits.visit_id,
+                visits.patient_id,
+                visits.visit_date,
+                visits.complaints,
+                visits.medicine,
+                visits.fees,
+                visits.remarks,
+                patients.name
+            FROM visits
+            JOIN patients ON visits.patient_id = patients.patient_id
+            WHERE DATE(visits.visit_date) = ?
+            ORDER BY visits.visit_date DESC
+        """, (today,))
+
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    
+    def delete_visit(self, visit_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('DELETE FROM visits WHERE visit_id = ?', (visit_id,))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", str(e))
+            return False
+        finally:
+            conn.close()
+
+    def export_patients_csv(self, filepath):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM patients")
+            rows = cursor.fetchall()
+            
+            with open(filepath, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(['ID', 'Name', 'Phone', 'Age', 'Gender', 'Address', 'Notes', 'Created At'])
+                writer.writerows(rows)
+            return True
+        except Exception as e:
+            messagebox.showerror("Export Error", str(e))
+            return False
+        finally:
+            conn.close()
+
+    def get_today_earnings(self):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        today = datetime.date.today().strftime("%Y-%m-%d")
+
+        cursor.execute("""
+            SELECT SUM(fees)
+            FROM visits
+            WHERE DATE(visit_date) = ?
+        """, (today,))
+
+        total = cursor.fetchone()[0]
+        conn.close()
+        return total or 0
+
+    def get_new_patients_today(self):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        today = datetime.date.today().strftime("%Y-%m-%d")
+
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM patients
+            WHERE DATE(created_at) = ?
+        """, (today,))
+
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
+    
+    def get_visits_count_map(self):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT patient_id, COUNT(*) 
+            FROM visits 
+            GROUP BY patient_id
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+        return {pid: cnt for pid, cnt in rows}
+
+    def get_month_earnings(self, year, month):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT SUM(fees)
+            FROM visits
+            WHERE strftime('%Y', visit_date) = ?
+            AND strftime('%m', visit_date) = ?
+        """, (str(year), f"{month:02d}"))
+
+        total = cursor.fetchone()[0]
+        conn.close()
+        return total or 0
+
+    def get_earnings_by_date_range(self, start_date, end_date):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT SUM(fees)
+            FROM visits
+            WHERE DATE(visit_date) BETWEEN ? AND ?
+        """, (start_date, end_date))
+
+        total = cursor.fetchone()[0]
+        conn.close()
+        return total or 0
+
+
+    def get_visits_by_date_range(self, start_date, end_date):
+        """
+        start_date, end_date: 'YYYY-MM-DD'
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                v.visit_id,
+                v.patient_id,
+                v.visit_date,
+                v.complaints,
+                v.medicine,
+                v.fees,
+                v.remarks,
+                p.name
+            FROM visits v
+            JOIN patients p ON v.patient_id = p.patient_id
+            WHERE DATE(v.visit_date) BETWEEN ? AND ?
+            ORDER BY v.visit_date DESC
+        """, (start_date, end_date))
+
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
+    def get_total_earnings(self):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT SUM(fees) FROM visits")
+        total = cursor.fetchone()[0]
+
+        conn.close()
+        return total or 0
+
+    
