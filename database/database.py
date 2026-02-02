@@ -472,3 +472,37 @@ class DatabaseManager:
         user = cursor.fetchone()
         conn.close()
         return user is not None
+
+    def change_password(self, username, old_password, new_password):
+        """Change user password after verifying old password."""
+        if not self.verify_login(username, old_password):
+            return False
+        
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        new_hash = hashlib.sha256(new_password.encode()).hexdigest()
+        try:
+            cursor.execute("UPDATE users SET password_hash = ? WHERE username = ?", (new_hash, username))
+            conn.commit()
+            return True
+        except sqlite3.Error:
+            return False
+        finally:
+            conn.close()
+
+    def add_user(self, username, password, role='admin'):
+        """Add a new user."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        try:
+            cursor.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", (username, password_hash, role))
+            conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            # Username already exists
+            return False
+        except sqlite3.Error:
+            return False
+        finally:
+            conn.close()

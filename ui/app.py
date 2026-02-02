@@ -12,8 +12,9 @@ from config.config import *
 
 
 class MainApp(tk.Tk):
-    def __init__(self):
+    def __init__(self, current_user):
         super().__init__()
+        self.current_user = current_user
         self.title(f"{APP_TITLE} v{APP_VERSION}")
         self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.minsize(MIN_WIDTH, MIN_HEIGHT)
@@ -103,6 +104,10 @@ class MainApp(tk.Tk):
     def show_dashboard(self):
         from ui.dashboard import dashboard
         dashboard(self)
+
+    def open_user_management(self):
+        from ui.user_management import UserManagementWindow
+        UserManagementWindow(self, self.current_user)
 
     def edit_patient(self, cb, patient):
         PatientForm(self, self.db, cb, patient_data=patient)

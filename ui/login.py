@@ -15,6 +15,7 @@ class LoginWindow(tk.Tk):
         
         self.db = DatabaseManager("clinic_data.db")
         self.logged_in = False
+        self.logged_in_user = None
         self.create_widgets()
 
     def center_window(self):
@@ -65,6 +66,7 @@ class LoginWindow(tk.Tk):
         
         if self.db.verify_login(username, password):
             self.logged_in = True
+            self.logged_in_user = username
             self.destroy()
         else:
             messagebox.showerror("Login Failed", "Invalid username or password.")

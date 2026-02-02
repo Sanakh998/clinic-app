@@ -6,5 +6,5 @@ if __name__ == "__main__":
     login.mainloop()
     
     if login.logged_in:
-        app = MainApp()
+        app = MainApp(login.logged_in_user)
         app.mainloop()
