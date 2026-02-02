@@ -21,7 +21,7 @@ A comprehensive clinic management system built with Python and Tkinter for Karac
 1. **Clone the repository**:
 
    ```
-   git clone <your-repo-url>
+   git clone https://github.com/Sanakh998/clinic-app.git
    cd clinic-app
    ```
 
