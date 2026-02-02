@@ -4,6 +4,7 @@ A comprehensive clinic management system built with Python and Tkinter for Karac
 
 ## Features
 
+- **User Authentication**: Secure login system to protect clinic data.
 - **Patient Management**: Add, edit, and view patient profiles with detailed information.
 - **Visit Tracking**: Record and manage patient visits, including history and today's appointments.
 - **Dashboard**: Overview of today's visits and clinic statistics.
@@ -42,6 +43,13 @@ python main.py
 ```
 
 This will launch the GUI application. The database (`clinic_data.db`) will be created automatically if it doesn't exist.
+
+You will be prompted to log in first. The default credentials are:
+
+- Username: `admin`
+- Password: `admin`
+
+**Note**: For security, change the default password after your first login (password change feature can be added in future updates).
 
 ## Database
 
