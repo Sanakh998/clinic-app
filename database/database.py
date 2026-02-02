@@ -3,6 +3,7 @@ import sqlite3
 import datetime
 import csv
 import sys
+import hashlib
 
 # ==========================================
 # DATABASE MANAGER
@@ -52,6 +53,23 @@ class DatabaseManager:
                 FOREIGN KEY (patient_id) REFERENCES patients (patient_id) ON DELETE CASCADE
             )
         ''')
+        
+        # Users Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT DEFAULT 'admin',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Insert default user if not exists
+        cursor.execute("SELECT COUNT(*) FROM users")
+        if cursor.fetchone()[0] == 0:
+            default_hash = hashlib.sha256("admin".encode()).hexdigest()
+            cursor.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", ("admin", default_hash))
         
         conn.commit()
         conn.close()
@@ -444,4 +462,13 @@ class DatabaseManager:
         conn.close()
         return total or 0
 
-    
+    # --- User Authentication ---
+    def verify_login(self, username, password):
+        """Verify user login credentials."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        cursor.execute("SELECT * FROM users WHERE username = ? AND password_hash = ?", (username, password_hash))
+        user = cursor.fetchone()
+        conn.close()
+        return user is not None
