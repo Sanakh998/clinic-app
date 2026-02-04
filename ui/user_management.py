@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from database.database import DatabaseManager
-from config.config import APP_TITLE, COLOR_BG
+from config.config import APP_TITLE, COLOR_BG, DB_NAME
 
 class UserManagementWindow(tk.Toplevel):
     def __init__(self, parent, current_user):
@@ -12,7 +12,7 @@ class UserManagementWindow(tk.Toplevel):
         self.configure(bg=COLOR_BG)
         
         self.current_user = current_user
-        self.db = DatabaseManager("clinic_data.db")
+        self.db = DatabaseManager(DB_NAME)
         
         self.center_window()
         self.create_widgets()

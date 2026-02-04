@@ -16,7 +16,7 @@ class MainApp(tk.Tk):
         super().__init__()
         self.current_user = current_user
         self.title(f"{APP_TITLE} v{APP_VERSION}")
-        self.geometry(f"{self.winfo_width()}x{self.winfo_height()}")
+        self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.minsize(MIN_WIDTH, MIN_HEIGHT)
         
         # =========================

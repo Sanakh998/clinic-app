@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import sv_ttk
 from database.database import DatabaseManager
-from config.config import APP_TITLE, COLOR_BG
+from config.config import APP_TITLE, COLOR_BG, DB_NAME
 
 class LoginWindow(tk.Tk):
     def __init__(self):
@@ -16,7 +16,7 @@ class LoginWindow(tk.Tk):
         # Center the window
         self.center_window()
         
-        self.db = DatabaseManager("clinic_data.db")
+        self.db = DatabaseManager(DB_NAME)
         self.logged_in = False
         self.logged_in_user = None
         self.create_widgets()

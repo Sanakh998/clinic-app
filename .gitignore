@@ -115,3 +115,6 @@ dmypy.json
 
 # Clinic database
 clinic_data.db
+
+# VSCode settings
+.vscode/
