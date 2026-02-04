@@ -25,7 +25,7 @@ class VisitForm(tk.Toplevel):
         
         self.create_widgets()
         
-        self.wait_visibility()
+        # self.wait_visibility()
         center_window(self, parent)
         
         self.transient(parent)

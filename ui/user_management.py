@@ -1,14 +1,15 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from database.database import DatabaseManager
+from config.config import APP_TITLE, COLOR_BG
 
 class UserManagementWindow(tk.Toplevel):
     def __init__(self, parent, current_user):
         super().__init__(parent)
-        self.title("User Management - ClinicManager Pro")
+        self.title(f"User Management - {APP_TITLE}")
         self.geometry("450x400")
         self.resizable(False, False)
-        self.configure(bg="#f8f9fa")
+        self.configure(bg=COLOR_BG)
         
         self.current_user = current_user
         self.db = DatabaseManager("clinic_data.db")
