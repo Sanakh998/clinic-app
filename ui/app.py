@@ -128,6 +128,10 @@ class MainApp(tk.Tk):
         from ui.patients_list import show_patients_list
         show_patients_list(self, filter_type=filter_type)
 
+    def show_medicine_inventory(self):
+        from ui.medicine_inventory import show_medicine_inventory
+        show_medicine_inventory(self)
+
 
 
     def export_data(self):

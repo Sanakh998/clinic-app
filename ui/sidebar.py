@@ -25,6 +25,7 @@ def setup_sidebar(app):
         ("➕ Add Visit", app.open_quick_visit),
         ("📜 Visit History", app.show_visit_history),
         ("📊 Reports", app.show_earnings),
+        ("💊 Medicines", app.show_medicine_inventory),
         ("⚙️ Settings", app.open_user_management),
     ]
 

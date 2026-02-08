@@ -137,6 +137,15 @@ class VisitForm(tk.Toplevel):
         if self.visit_data:
             self.entry_remarks.insert(0, self.visit_data[6])
 
+        # ================= Autocomplete Logic =================
+        self.suggestion_box = None
+        self.medicines_list = [m[1] for m in self.db.get_all_medicines()]
+        
+        self.txt_medicine.bind("<KeyRelease>", self.on_medicine_type)
+        self.txt_medicine.bind("<FocusOut>", self.hide_suggestions)
+        # Bind Down arrow to move focus to listbox if visible
+        self.txt_medicine.bind("<Down>", self.focus_suggestion)
+
 
         # ================= Focus & Enter Logic =================
 
@@ -164,6 +173,104 @@ class VisitForm(tk.Toplevel):
         save_text = "Update Visit" if self.visit_data else "Save Visit"
         ttk.Button(btn_frame, text=save_text, command=self.save_visit).pack(side="right", padx=5)
         ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side="right")
+
+    def on_medicine_type(self, event):
+        # Ignore navigation keys
+        if event.keysym in ("Up", "Down", "Left", "Right", "Return", "Escape", "Tab"):
+            return
+
+        # Get current line text
+        try:
+            current_line_idx = self.txt_medicine.index("insert linestart")
+            current_line_end = self.txt_medicine.index("insert lineend")
+            line_text = self.txt_medicine.get(current_line_idx, current_line_end).strip()
+            
+            # Simple logic: match last word being typed if multiple medicines separated by newline
+            # Or simplified: check if line match any medicine
+            # Let's try to match from the beginning of the line or last word
+            # For simplicity, let's match the whole line content against medicine names
+            
+            typed = line_text.lower()
+            if not typed:
+                self.hide_suggestions(None)
+                return
+
+            msg_matches = [m for m in self.medicines_list if typed in m.lower()]
+            
+            if msg_matches:
+                self.show_suggestions(msg_matches)
+            else:
+                self.hide_suggestions(None)
+        except Exception:
+            pass
+
+    def show_suggestions(self, matches):
+        if self.suggestion_box:
+            self.suggestion_box.destroy()
+
+        # Position popup near cursor
+        # Get cursor stats
+        try:
+            x, y, w, h = self.txt_medicine.bbox("insert")
+            # bbox returns relative coordinates in text widget
+            
+            # Absolute position
+            root_x = self.txt_medicine.winfo_rootx() + x
+            root_y = self.txt_medicine.winfo_rooty() + y + h
+            
+            self.suggestion_box = tk.Toplevel(self)
+            self.suggestion_box.wm_overrideredirect(True)
+            self.suggestion_box.geometry(f"200x150+{root_x}+{root_y}")
+            
+            self.lb_suggestions = tk.Listbox(self.suggestion_box, font=FONT_MAIN, height=5)
+            self.lb_suggestions.pack(fill="both", expand=True)
+            
+            for m in matches:
+                self.lb_suggestions.insert(tk.END, m)
+                
+            self.lb_suggestions.bind("<<ListboxSelect>>", self.on_suggestion_select)
+            self.lb_suggestions.bind("<Return>", self.on_suggestion_select)
+            self.lb_suggestions.bind("<Escape>", self.hide_suggestions)
+            
+            # Selection focus
+            self.lb_suggestions.select_set(0)
+        except:
+            pass
+            
+    def hide_suggestions(self, event):
+        if self.suggestion_box:
+            # Check if focus is moving to the suggestion box
+            if self.focus_get() == self.lb_suggestions:
+                return
+            self.suggestion_box.destroy()
+            self.suggestion_box = None
+
+    def focus_suggestion(self, event):
+        if self.suggestion_box:
+            self.lb_suggestions.focus_set()
+            return "break" # Prevent default scrolling
+
+    def on_suggestion_select(self, event):
+        if not self.suggestion_box:
+            return
+            
+        selection = self.lb_suggestions.curselection()
+        if selection:
+            medicine = self.lb_suggestions.get(selection[0])
+            
+            # Insert into Text widget
+            # Replace current line with selected medicine
+            current_line_start = self.txt_medicine.index("insert linestart")
+            current_line_end = self.txt_medicine.index("insert lineend")
+            
+            self.txt_medicine.delete(current_line_start, current_line_end)
+            self.txt_medicine.insert(current_line_start, medicine)
+            self.txt_medicine.mark_set("insert", f"{current_line_start} + {len(medicine)}c")
+            
+            self.hide_suggestions(None)
+            self.txt_medicine.focus_set()
+            
+        return "break"
 
     def save_visit(self):
         date_str = self.date_var.get()

@@ -54,6 +54,19 @@ class DatabaseManager:
             )
         ''')
         
+        # Medicines Table (Inventory)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS medicines (
+                medicine_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                type TEXT,
+                quantity INTEGER DEFAULT 0,
+                price REAL DEFAULT 0.0,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         # Users Table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
@@ -187,6 +200,74 @@ class DatabaseManager:
         row = cursor.fetchone()
         conn.close()
         return row
+
+    # --- Medicine Operations ---
+    def add_medicine(self, name, type, quantity, price, description):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                INSERT INTO medicines (name, type, quantity, price, description)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (name, type, quantity, price, description))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", str(e))
+            return False
+        finally:
+            conn.close()
+
+    def update_medicine(self, m_id, name, type, quantity, price, description):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+                UPDATE medicines 
+                SET name=?, type=?, quantity=?, price=?, description=?
+                WHERE medicine_id=?
+            ''', (name, type, quantity, price, description, m_id))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", str(e))
+            return False
+        finally:
+            conn.close()
+
+    def delete_medicine(self, m_id):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute('DELETE FROM medicines WHERE medicine_id = ?', (m_id,))
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", str(e))
+            return False
+        finally:
+            conn.close()
+
+    def get_all_medicines(self):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM medicines ORDER BY name ASC")
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    
+    def search_medicines(self, query):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        search_term = f"%{query}%"
+        cursor.execute('''
+            SELECT * FROM medicines 
+            WHERE name LIKE ? 
+            ORDER BY name ASC
+        ''', (search_term,))
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
 
     # --- Visit Operations ---
     def add_visit(self, patient_id, complaints, medicine, fees, remarks, date_str):
