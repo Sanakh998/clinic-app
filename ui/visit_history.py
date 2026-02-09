@@ -27,11 +27,12 @@ def show_visit_history(app):
         style="SubTitle.TLabel"
     ).pack(side="left")
 
-    ttk.Label(
+    app.visit_count_label = ttk.Label(
         header,
-        text=f"(Total: {len(app.filtered_visits) or 0})",
+        text=f"(Total: 0)",
         style="Muted.TLabel"
-    ).pack(side="left", padx=PAD_SMALL, pady=(5, 0))
+    )
+    app.visit_count_label.pack(side="left", padx=PAD_SMALL, pady=(5, 0))
 
     ttk.Button(
         header,
@@ -102,6 +103,9 @@ def apply_visit_filter(app, filter_type):
         ]
 
     app.filtered_visits = visits
+
+    # Update the count label
+    app.visit_count_label.config(text=f"(Total: {len(visits)})")
 
     load_visits(
         app,
