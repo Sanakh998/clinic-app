@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from utils import center_window
-from config.config import FONT_HEADER, FONT_MAIN
+from config.config import FONT_HEADER, FONT_MAIN, FONT_BODY, PAD_LARGE
 from utils.center_window import center_window
 
 
@@ -13,8 +13,8 @@ class PatientForm(tk.Toplevel):
         self.patient_data = patient_data 
         
         self.title("Edit Patient" if patient_data else "Add New Patient")
-        self.geometry("450x550")
-        self.configure(padx=20, pady=20)
+        # self.geometry("450x550") # Let content dictate height
+        self.configure(padx=PAD_LARGE, pady=PAD_LARGE)
         
         self.create_widgets()
         
@@ -28,7 +28,7 @@ class PatientForm(tk.Toplevel):
         heading = ttk.Label(
             self, 
             text="Patient Information", 
-            font=("Helvetica", 15, "bold")
+            style="SubTitle.TLabel"
         )
         heading.pack(pady=(0, 15), anchor="center")
 
@@ -37,7 +37,7 @@ class PatientForm(tk.Toplevel):
         self.entries = []  # ye list focus order maintain karne ke liye hai
 
         for label_text in labels:
-            ttk.Label(self, text=label_text, font=FONT_HEADER).pack(anchor="w", pady=(10, 2))
+            ttk.Label(self, text=label_text, font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
             key = label_text.split(" ")[0].lower()
 
             if key == "gender":
@@ -47,17 +47,18 @@ class PatientForm(tk.Toplevel):
                     self, 
                     textvariable=var, 
                     values=["Male", "Female", "Other"], 
-                    state="readonly"
+                    state="readonly",
+                    font=FONT_BODY
                 )
-                cb.pack(fill="x")
+                cb.pack(fill="x", pady=(0, 15))
 
                 self.vars["gender"] = var
                 self.entries.append(cb)  # focus chain mein add
 
             elif key == "medical":
                 # Medical Notes ke liye Text widget
-                txt = tk.Text(self, height=3, font=FONT_MAIN)
-                txt.pack(fill="x")
+                txt = tk.Text(self, height=3, width=50, font=FONT_BODY)
+                txt.pack(fill="x", pady=(0, 15))
 
                 self.vars["notes"] = txt
                 self.entries.append(txt)
@@ -65,8 +66,8 @@ class PatientForm(tk.Toplevel):
             else:
                 # Normal Entry fields
                 var = tk.StringVar()
-                entry = ttk.Entry(self, textvariable=var)
-                entry.pack(fill="x")
+                entry = ttk.Entry(self, textvariable=var, font=FONT_BODY)
+                entry.pack(fill="x", pady=(0, 15))
 
                 self.vars[key] = var
                 self.entries.append(entry)
@@ -100,7 +101,7 @@ class PatientForm(tk.Toplevel):
                     lambda e, next_w=self.entries[i + 1]: next_w.focus_set()
                 )
 
-        ttk.Button(self, text="Save Record", command=self.save).pack(pady=20, fill="x")
+        ttk.Button(self, text="Save Record", command=self.save, style="Accent.TButton").pack(pady=20, fill="x")
 
     def save(self):
         # Name required hai

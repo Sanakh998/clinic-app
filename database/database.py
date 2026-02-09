@@ -164,6 +164,29 @@ class DatabaseManager:
         return rows
 
 
+    def get_recent_activity(self, limit=15):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT 
+                v.visit_date,
+                p.name,
+                p.gender,
+                p.age,
+                v.complaints,
+                p.patient_id
+            FROM visits v
+            JOIN patients p ON v.patient_id = p.patient_id
+            ORDER BY v.visit_date DESC
+            LIMIT ?
+        """, (limit,))
+
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
+
     def get_all_patients(self):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -587,3 +610,41 @@ class DatabaseManager:
             return False
         finally:
             conn.close()
+            
+    def get_visits_stats(self, days=30):
+        """
+        Returns a list of tuples (date_str, count) for the last `days`.
+        Ensures all dates in the range are present, filling missing ones with 0.
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        # SQLite doesn't have a built-in sequence generator for dates easily available 
+        # without extensions or recursive CTEs (available in modern SQLite).
+        # We will fetch grouped data and fill gaps in Python for simplicity and compatibility.
+        
+        start_date = (datetime.date.today() - datetime.timedelta(days=days-1)).strftime("%Y-%m-%d")
+        
+        cursor.execute("""
+            SELECT DATE(visit_date) as day, COUNT(*)
+            FROM visits
+            WHERE DATE(visit_date) >= ?
+            GROUP BY day
+            ORDER BY day
+        """, (start_date,))
+        
+        rows = dict(cursor.fetchall())
+        conn.close()
+        
+        # Fill in missing dates
+        stats = []
+        current = datetime.date.today() - datetime.timedelta(days=days-1)
+        end = datetime.date.today()
+        
+        while current <= end:
+            day_str = current.strftime("%Y-%m-%d")
+            count = rows.get(day_str, 0)
+            stats.append((day_str, count))
+            current += datetime.timedelta(days=1)
+            
+        return stats

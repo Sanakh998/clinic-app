@@ -137,8 +137,8 @@ class MedicineForm(tk.Toplevel):
         self.entry_name.pack(fill="x", pady=(0, 15))
 
         # Type
-        ttk.Label(self, text="Type (Tablet, Syrup, etc):", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
-        self.entry_type = ttk.Combobox(self, values=["Tablet", "Capsule", "Syrup", "Injection", "Drops", "Ointment", "Other"], font=FONT_BODY)
+        ttk.Label(self, text="Type:", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
+        self.entry_type = ttk.Combobox(self, values=["Dilution", "Mother Tincture", "Trituration", "Biochemic", "Ointment", "Drops", "Other"], font=FONT_BODY)
         self.entry_type.pack(fill="x", pady=(0, 15))
 
         # Quantity

@@ -2,12 +2,18 @@ from tkinter import ttk
 from utils.scrollable_frame import ScrollableFrame
 from config.config import COLOR_BG, COLOR_SURFACE
 
-def create_table(parent, columns, column_config):
-    wrapper = ScrollableFrame(parent)
+def create_table(parent, columns, column_config, scrollbar=True):
+    if scrollbar:
+        wrapper = ScrollableFrame(parent)
+        params_parent = wrapper.scrollable_frame
+    else:
+        wrapper = ttk.Frame(parent)
+        params_parent = wrapper
+        
     wrapper.pack(fill="both", expand=True)
 
     tree = ttk.Treeview(
-        wrapper.scrollable_frame,
+        params_parent,
         columns=columns,
         show="headings",
         style="App.Treeview"

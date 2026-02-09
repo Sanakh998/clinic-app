@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import datetime
 from utils.center_window import center_window
-from config.config import FONT_HEADER, FONT_MAIN
+from config.config import FONT_HEADER, FONT_MAIN, FONT_BODY, PAD_LARGE
 
 
 class VisitForm(tk.Toplevel):
@@ -20,8 +20,8 @@ class VisitForm(tk.Toplevel):
 
         mode = "Edit" if visit_data else "Add New"
         self.title(f"{mode} Visit")
-        self.geometry("450x550")
-        self.configure(padx=20, pady=20)
+        # self.geometry("450x550")
+        self.configure(padx=PAD_LARGE, pady=PAD_LARGE)
         
         self.create_widgets()
         
@@ -35,14 +35,14 @@ class VisitForm(tk.Toplevel):
         heading = ttk.Label(
             self, 
             text="Visit Information", 
-            font=("Helvetica", 15, "bold")
+            style="SubTitle.TLabel"
         )
         heading.pack(pady=(0, 15), anchor="center")
 
         self.entries = []  # focus order maintain karne ke liye
 
         if self.allow_patient_select:
-            ttk.Label(self, text="Select Patient:", font=FONT_HEADER).pack(anchor="w")
+            ttk.Label(self, text="Select Patient:", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
 
             patients = self.db.get_all_patients()
             self.patient_map = {f"{p[1]} (ID: {p[0]})": p[0] for p in patients}
@@ -52,6 +52,7 @@ class VisitForm(tk.Toplevel):
                 self,
                 textvariable=self.patient_var,
                 values=list(self.patient_map.keys()),
+                font=FONT_BODY
             )
             cb.pack(fill="x", pady=(0, 15))
 
@@ -94,44 +95,44 @@ class VisitForm(tk.Toplevel):
             ).pack(side="right")
 
         # ================= Date =================
-        ttk.Label(self, text="Date:", font=FONT_HEADER).pack(anchor="w")
+        ttk.Label(self, text="Date:", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
         initial_date = self.visit_data[2] if self.visit_data else datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
         self.date_var = tk.StringVar(value=initial_date)
-        entry_date = ttk.Entry(self, textvariable=self.date_var)
-        entry_date.pack(fill="x", pady=(0, 10))
+        entry_date = ttk.Entry(self, textvariable=self.date_var, font=FONT_BODY)
+        entry_date.pack(fill="x", pady=(0, 15))
         self.entries.append(entry_date)
 
         # ================= History =================
-        ttk.Label(self, text="History:", font=FONT_HEADER).pack(anchor="w")
-        self.txt_complaints = tk.Text(self, height=3, font=FONT_MAIN)
-        self.txt_complaints.pack(fill="x", pady=(0, 10))
+        ttk.Label(self, text="History:", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
+        self.txt_complaints = tk.Text(self, height=3, width=50, font=FONT_BODY)
+        self.txt_complaints.pack(fill="x", pady=(0, 15))
         self.entries.append(self.txt_complaints)
 
         if self.visit_data:
             self.txt_complaints.insert("1.0", self.visit_data[3])
 
         # ================= Medicine =================
-        ttk.Label(self, text="Medicine:", font=FONT_HEADER).pack(anchor="w")
-        self.txt_medicine = tk.Text(self, height=3, font=FONT_MAIN)
-        self.txt_medicine.pack(fill="x", pady=(0, 10))
+        ttk.Label(self, text="Medicine:", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
+        self.txt_medicine = tk.Text(self, height=3, width=50, font=FONT_BODY)
+        self.txt_medicine.pack(fill="x", pady=(0, 15))
         self.entries.append(self.txt_medicine)
 
         if self.visit_data:
             self.txt_medicine.insert("1.0", self.visit_data[4])
 
         # ================= FEES =================
-        ttk.Label(self, text="Fees:", font=FONT_HEADER).pack(anchor="w")
-        self.entry_fees = ttk.Entry(self, font=FONT_MAIN)
-        self.entry_fees.pack(fill="x", pady=(0, 20))
+        ttk.Label(self, text="Fees:", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
+        self.entry_fees = ttk.Entry(self, font=FONT_BODY)
+        self.entry_fees.pack(fill="x", pady=(0, 15))
         self.entries.append(self.entry_fees)
 
         if self.visit_data:
             self.entry_fees.insert(0, self.visit_data[5])
 
         # ================= Remarks =================
-        ttk.Label(self, text="Remarks:", font=FONT_HEADER).pack(anchor="w")
-        self.entry_remarks = ttk.Entry(self, font=FONT_MAIN)
-        self.entry_remarks.pack(fill="x", pady=(0, 20))
+        ttk.Label(self, text="Remarks:", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
+        self.entry_remarks = ttk.Entry(self, font=FONT_BODY)
+        self.entry_remarks.pack(fill="x", pady=(0, 15))
         self.entries.append(self.entry_remarks)
 
         if self.visit_data:
@@ -171,7 +172,7 @@ class VisitForm(tk.Toplevel):
         btn_frame.pack(fill="x")
         
         save_text = "Update Visit" if self.visit_data else "Save Visit"
-        ttk.Button(btn_frame, text=save_text, command=self.save_visit).pack(side="right", padx=5)
+        ttk.Button(btn_frame, text=save_text, command=self.save_visit, style="Accent.TButton").pack(side="right", padx=5)
         ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side="right")
 
     def on_medicine_type(self, event):
@@ -179,22 +180,25 @@ class VisitForm(tk.Toplevel):
         if event.keysym in ("Up", "Down", "Left", "Right", "Return", "Escape", "Tab"):
             return
 
-        # Get current line text
+        # Get all text from the text widget
         try:
-            current_line_idx = self.txt_medicine.index("insert linestart")
-            current_line_end = self.txt_medicine.index("insert lineend")
-            line_text = self.txt_medicine.get(current_line_idx, current_line_end).strip()
+            all_text = self.txt_medicine.get("1.0", "end-1c")
             
-            # Simple logic: match last word being typed if multiple medicines separated by newline
-            # Or simplified: check if line match any medicine
-            # Let's try to match from the beginning of the line or last word
-            # For simplicity, let's match the whole line content against medicine names
+            # Split by comma to get individual medicine entries
+            # Check if we just typed a comma or if there's text after the last comma
+            parts = all_text.split(",")
             
-            typed = line_text.lower()
-            if not typed:
+            # Get the last part (current medicine being typed)
+            current_part = parts[-1].strip() if parts else ""
+            
+            # If the user just typed a comma and there's no text after it yet, don't show suggestions
+            # But if they start typing after a comma, show suggestions
+            if not current_part:
                 self.hide_suggestions(None)
                 return
 
+            # Match medicines based on current part
+            typed = current_part.lower()
             msg_matches = [m for m in self.medicines_list if typed in m.lower()]
             
             if msg_matches:
@@ -222,7 +226,7 @@ class VisitForm(tk.Toplevel):
             self.suggestion_box.wm_overrideredirect(True)
             self.suggestion_box.geometry(f"200x150+{root_x}+{root_y}")
             
-            self.lb_suggestions = tk.Listbox(self.suggestion_box, font=FONT_MAIN, height=5)
+            self.lb_suggestions = tk.Listbox(self.suggestion_box, font=FONT_BODY, height=5)
             self.lb_suggestions.pack(fill="both", expand=True)
             
             for m in matches:
@@ -258,14 +262,24 @@ class VisitForm(tk.Toplevel):
         if selection:
             medicine = self.lb_suggestions.get(selection[0])
             
-            # Insert into Text widget
-            # Replace current line with selected medicine
-            current_line_start = self.txt_medicine.index("insert linestart")
-            current_line_end = self.txt_medicine.index("insert lineend")
+            # Get all text
+            all_text = self.txt_medicine.get("1.0", "end-1c")
+            parts = all_text.split(",")
             
-            self.txt_medicine.delete(current_line_start, current_line_end)
-            self.txt_medicine.insert(current_line_start, medicine)
-            self.txt_medicine.mark_set("insert", f"{current_line_start} + {len(medicine)}c")
+            # Replace the last part (what was being typed) with the selected medicine
+            if len(parts) > 1:
+                # Keep everything before the last comma, then add the new medicine
+                base_text = ",".join(parts[:-1])
+                new_text = base_text + ", " + medicine + ", "
+            else:
+                # Only one medicine (or first one)
+                new_text = medicine + ", "
+            
+            self.txt_medicine.delete("1.0", tk.END)
+            self.txt_medicine.insert("1.0", new_text)
+            
+            # Move cursor to end
+            self.txt_medicine.mark_set("insert", tk.END)
             
             self.hide_suggestions(None)
             self.txt_medicine.focus_set()

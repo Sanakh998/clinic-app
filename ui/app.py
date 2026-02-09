@@ -131,6 +131,10 @@ class MainApp(tk.Tk):
     def show_medicine_inventory(self):
         from ui.medicine_inventory import show_medicine_inventory
         show_medicine_inventory(self)
+    
+    # def show_medicine_store(self):
+    #     from ui.medicine_store import show_medicine_store
+    #     show_medicine_store(self)
 
 
 
