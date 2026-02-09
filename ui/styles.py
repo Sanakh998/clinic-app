@@ -41,7 +41,7 @@ def setup_styles(style):
     style.configure("Accent.TButton", font=FONT_BODY_BOLD) # sv_ttk handles blue color usually
     style.configure("Danger.TButton", foreground=COLOR_DANGER)
     # Quick Action Buttons
-    style.configure("Quick.TButton", font=FONT_HEADER, padding=(PAD_LARGE, PAD_MEDIUM))
+    style.configure("Quick.TButton", font=FONT_BODY_BOLD)
 
     # Frames
     style.configure("TFrame", background=COLOR_BG)

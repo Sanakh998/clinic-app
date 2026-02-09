@@ -3,10 +3,10 @@
 # CONFIGURATION & CONSTANTS
 # ==========================================
 DB_NAME = "clinic_data.db"
-CLINIC_NAME = "🩺 Karachi Homoeo Clinic"
+CLINIC_NAME = "Karachi Homoeo Clinic"
 DOCTOR_NAME = "Dr. Ameer Hamza Khoso"
 APP_TITLE = f"{CLINIC_NAME} - ClinicManager Pro"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 
 # Fonts & Styles
 FONT_MAIN = ("Segoe UI", 10)

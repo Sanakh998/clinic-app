@@ -71,8 +71,8 @@ def build_recent_activity_section(parent, app):
 
     ttk.Button(
         btn_box, 
-        text="🩺 New Visit", 
-        style="Accented.TButton", # Or normal
+        text="➕ New Visit", 
+        style="Quick.TButton", # Or normal
         command=app.open_quick_visit,
         width=15
     ).pack(side="left")

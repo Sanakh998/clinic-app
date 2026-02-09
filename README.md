@@ -11,7 +11,8 @@ A comprehensive clinic management system built with Python and Tkinter for Karac
 - **Dashboard**: Overview of today's visits and clinic statistics.
 - **Earnings Reports**: Generate and view financial reports.
 - **Data Export**: Export patient and visit data to CSV files.
-- **Modern UI**: Clean, professional interface with light/dark theme support using sv-ttk.
+- **Medicine Inventory**: Manage medicine stock and inventory for homeopathic practices.
+- **Modern UI**: Clean, professional interface with light/dark theme support, integrated quick actions, and recent activity tracking.
 
 ## Requirements
 
@@ -61,21 +62,27 @@ The application uses SQLite for data storage. The database file `clinic_data.db`
 ```
 clinic-app/
 ├── main.py                 # Application entry point
+├── build_exe.py            # Executable build script
 ├── config/
 │   └── config.py           # Configuration constants and settings
 ├── database/
 │   ├── __init__.py
-│   └── database.py         # Database management and operations
+│   ├── database.py         # Database management and operations
+│   └── medicine_db.py      # Medicine-specific database operations
 ├── forms/
 │   ├── __init__.py
 │   ├── patient_form.py     # Patient registration/editing form
-│   └── visit_form.py       # Visit recording form
-├── reports/
-│   └── report_generator.py # Report generation utilities
+│   ├── visit_form.py       # Visit recording form
+│   └── medicine_form.py    # Medicine entry form
+├── services/
+│   ├── __init__.py
+│   └── medicine_service.py # Business logic for medicine inventory
 ├── ui/
 │   ├── __init__.py
 │   ├── app.py              # Main application window
 │   ├── dashboard.py        # Dashboard view
+│   ├── dashboard_helpers.py # UI helpers for dashboard
+│   ├── medicine_store.py   # Medicine inventory module
 │   ├── earnings_report.py  # Earnings report view
 │   ├── patient_profile.py  # Patient profile view
 │   ├── patients_list.py    # Patients list view
@@ -89,8 +96,9 @@ clinic-app/
 │   ├── __init__.py
 │   ├── center_window.py    # Window centering utility
 │   ├── placeholder_entry.py # Placeholder text for entries
+│   ├── resource_path.py    # Resource path handling for frozen apps
 │   └── scrollable_frame.py # Scrollable frame widget
-├── assets/                 # Static assets (if any)
+├── assets/                 # Icons and static assets
 ├── .gitignore              # Git ignore file
 └── README.md               # This file
 ```
@@ -123,4 +131,20 @@ For issues or questions, please open an issue on GitHub or contact the maintaine
 
 ---
 
-**ClinicManager Pro v1.1.0** - Developed for Karachi Homoeo Clinic
+## Building the Executable
+
+To package the application into a standalone Windows executable (.exe):
+
+1. **Install PyInstaller**:
+   ```
+   pip install pyinstaller
+   ```
+2. **Run the build script**:
+   ```
+   python build_exe.py
+   ```
+   This will generate a `dist/` folder containing the `ClinicManagerPro.exe`.
+
+---
+
+**ClinicManager Pro v1.2.0** - Developed for Karachi Homoeo Clinic

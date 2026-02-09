@@ -2,6 +2,9 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import sv_ttk
 import datetime
+from PIL import Image, ImageTk
+import os
+from utils.resource_path import resource_path
 from database.database import DatabaseManager
 from reports.report_generator import ReportGenerator
 from forms.patient_form import PatientForm
@@ -28,6 +31,14 @@ class MainApp(tk.Tk):
         self.style = ttk.Style()
         setup_styles(self.style)
 
+        # Set Window Icon
+        icon_path = resource_path("assets/clinic.ico")
+        if os.path.exists(icon_path):
+            try:
+                self.iconbitmap(icon_path)
+            except Exception as e:
+                print(f"Error loading window icon: {e}")
+
         # Database Init
         self.db = DatabaseManager(DB_NAME)
         
@@ -48,9 +59,30 @@ class MainApp(tk.Tk):
         setup_sidebar(self)
 
 
-        # Clinic Info
+        # Clinic Logo & Name Container
+        clinic_info_frame = ttk.Frame(self.header_frame)
+        clinic_info_frame.pack(side="left", anchor="w")
+
+        # Load and Display Logo
+        icon_path = resource_path("assets/clinic.ico")
+        if os.path.exists(icon_path):
+            try:
+                # Open ICO file, and use the largest frame or let PIL handle it
+                logo_img = Image.open(icon_path)
+                logo_img = logo_img.resize((40, 40), Image.LANCZOS)
+                self.logo_photo = ImageTk.PhotoImage(logo_img)
+                
+                logo_label = tk.Label(
+                    clinic_info_frame,
+                    image=self.logo_photo,
+                    bg=COLOR_BG
+                )
+                logo_label.pack(side="left", padx=(0, 5))
+            except Exception as e:
+                print(f"Error loading header logo: {e}")
+
         lbl_clinic = tk.Label(
-            self.header_frame,
+            clinic_info_frame,
             text=CLINIC_NAME,
             font=FONT_TITLE_MAIN,
             fg=COLOR_PRIMARY,

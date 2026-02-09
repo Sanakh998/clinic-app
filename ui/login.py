@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import sv_ttk
+import os
+from utils.resource_path import resource_path
 from database.database import DatabaseManager
 from config.config import APP_TITLE, COLOR_BG, DB_NAME
 
@@ -13,6 +15,14 @@ class LoginWindow(tk.Tk):
         sv_ttk.set_theme("light")
         self.configure(bg=COLOR_BG)
         
+        # Set Window Icon
+        icon_path = resource_path("assets/clinic.ico")
+        if os.path.exists(icon_path):
+            try:
+                self.iconbitmap(icon_path)
+            except Exception as e:
+                print(f"Error loading login window icon: {e}")
+
         # Center the window
         self.center_window()
         
