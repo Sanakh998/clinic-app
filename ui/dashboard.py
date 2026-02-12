@@ -9,6 +9,9 @@ from config.config import (
     COLOR_BG, COLOR_SURFACE, COLOR_TEXT_MAIN, COLOR_TEXT_MUTED, FONT_HEADER
 )
 import datetime
+from PIL import Image, ImageTk
+from utils.resource_path import resource_path
+
 
 # ==========================================
 # DASHBOARD
@@ -25,11 +28,12 @@ def dashboard(app):
         grid.columnconfigure(i, weight=1)
 
     cards = [
-        ("👥", "Total Patients", app.db.get_total_patients_count(), COLOR_PRIMARY, lambda: app.show_patients()),
-        ("📅", "Today’s Visits", len(app.db.get_today_visits()), COLOR_PRIMARY, lambda: app.show_today_visits()),
-        ("💰", "Earnings Today", f"PKR {app.db.get_today_earnings()}", COLOR_SUCCESS, lambda: app.show_earnings()),
-        ("🆕", "New Patients (Today)", app.db.get_new_patients_today(), COLOR_PRIMARY, lambda: app.show_new_patients("today")),
+        ("assets/icons/users.png", "Total Patients", app.db.get_total_patients_count(), COLOR_PRIMARY, lambda: app.show_patients()),
+        ("assets/icons/calendar.png", "Today’s Visits", len(app.db.get_today_visits()), COLOR_PRIMARY, lambda: app.show_today_visits()),
+        ("assets/icons/money.png","Earning Today", f"PKR {app.db.get_today_earnings()}", COLOR_SUCCESS, lambda: app.show_earnings()),
+        ("assets/icons/today.png","New Patients (Today)", app.db.get_new_patients_today(), COLOR_PRIMARY, lambda: app.show_new_patients("today")),
     ]
+
 
     for col, card in enumerate(cards):
         create_dashboard_card(grid, col, *card)
@@ -138,7 +142,7 @@ def build_recent_activity_section(parent, app):
 # CARD COMPONENT
 # ==========================================
 
-def create_dashboard_card(parent, column, icon, title, value, color, on_click=None):
+def create_dashboard_card(parent, column, icon_path, title, value, color, on_click=None):
 
     # Outer wrapper (spacing)
     outer = ttk.Frame(parent, style="Outer.TFrame", padding=1)
@@ -160,12 +164,20 @@ def create_dashboard_card(parent, column, icon, title, value, color, on_click=No
     content = tk.Frame(card, bg=COLOR_SURFACE, padx=PAD_LARGE, pady=PAD_LARGE)
     content.pack(side="left", fill="both", expand=True)
 
+    # Load icon safely
+    full_path = resource_path(icon_path)
+    img = Image.open(full_path).resize((40, 40))
+    icon = ImageTk.PhotoImage(img)
+
+    # Prevent garbage collection
+    if not hasattr(parent, "dashboard_icons"):
+        parent.dashboard_icons = []
+    parent.dashboard_icons.append(icon)
+
     # Icon
     tk.Label(
         content,
-        text=icon,
-        font=(FONT_FAMILY, 26),
-        fg=color,
+        image=icon,
         bg=COLOR_SURFACE
     ).pack(anchor="w")
 

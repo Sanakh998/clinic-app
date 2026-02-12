@@ -74,7 +74,7 @@ class DatabaseManager:
         # Medicines Table (Inventory)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS medicines (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                medicine_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL UNIQUE,
                 description TEXT,
                 times_used INTEGER DEFAULT 0,
@@ -85,7 +85,71 @@ class DatabaseManager:
         
         conn.commit()
         conn.close()
-    
+
+    def load_common_medicines(self):
+        base_remedies = [
+            "Arnica", "Nux Vomica", "Belladonna", "Bryonia",
+            "Rhus Toxicodendron", "Sulphur", "Pulsatilla",
+            "Calcarea Carbonica", "Lycopodium", "Gelsemium",
+            "Aconite", "Apis Mellifica", "Mercurius Solubilis",
+            "Hepar Sulphuris", "Natrum Muriaticum", "Phosphorus",
+            "Sepia", "Ignatia", "Arsenicum Album",
+            "Carbo Vegetabilis", "Chamomilla", "Drosera",
+            "Kali Bichromicum", "Silicea", "Thuja",
+            "Causticum", "Colocynthis", "Conium",
+            "Hypericum", "Ledum", "Ruta",
+            "Staphysagria", "Lachesis", "Graphites",
+            "Calcarea Phosphorica", "Magnesia Phosphorica",
+            "Natrum Phosphoricum", "Natrum Sulphuricum"
+        ]
+
+        constitutional_1M = [
+            "Sulphur", "Calcarea Carbonica", "Lycopodium",
+            "Natrum Muriaticum", "Phosphorus",
+            "Sepia", "Lachesis", "Silicea"
+        ]
+
+        mother_tinctures = [
+            "Calendula", "Cantharis", "Echinacea",
+            "Hydrastis", "Hamamelis", "Chelidonium"
+        ]
+
+        potencies = ["6C", "30C", "200C"]
+
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            # Add regular remedies with common potencies
+            for remedy in base_remedies:
+                for pot in potencies:
+                    name = f"{remedy} {pot}"
+                    cursor.execute("""
+                        INSERT OR IGNORE INTO medicines (name)
+                        VALUES (?)
+                    """, (name,))
+
+            # Add 1M potencies for major remedies
+            for remedy in constitutional_1M:
+                name = f"{remedy} 1M"
+                cursor.execute("""
+                    INSERT OR IGNORE INTO medicines (name)
+                    VALUES (?)
+                """, (name,))
+
+            # Add mother tinctures (Q)
+            for remedy in mother_tinctures:
+                name = f"{remedy} Q"
+                cursor.execute("""
+                    INSERT OR IGNORE INTO medicines (name)
+                    VALUES (?)
+                """, (name,))
+
+            conn.commit()
+
+        finally:
+            conn.close()
+
     # ============================================
     # USER AUTHENTICATION
     # ============================================

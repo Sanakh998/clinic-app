@@ -17,10 +17,14 @@ class MedicineInventoryFrame(ttk.Frame):
         self.sort_reverse = False
         self.current_filter = "ALL"
 
+        self.empty_frame = None
+        self.table_container = None
+
         self.setup_ui()
         self.load_data()
 
     def setup_ui(self):
+        # ================= TOP BAR =================
         top_frame = ttk.Frame(self)
         top_frame.pack(fill="x", pady=(0, PAD_MEDIUM))
 
@@ -31,7 +35,6 @@ class MedicineInventoryFrame(ttk.Frame):
         )
         lbl_title.pack(side="left")
 
-        # Add Button
         btn_add = ttk.Button(
             top_frame,
             text="+ Add Medicine",
@@ -40,32 +43,34 @@ class MedicineInventoryFrame(ttk.Frame):
         )
         btn_add.pack(side="right", padx=PAD_MEDIUM)
 
+        # ================= MAIN CONTAINER =================
+        self.table_container = ttk.Frame(self)
+        self.table_container.pack(fill="both", expand=True)
 
-        # ================= FILTER BUTTONS =================
-        filter_frame = ttk.Frame(self)
-        filter_frame.pack(fill="x", pady=(0, PAD_MEDIUM))
+        # ================= FILTER BAR =================
+        self.filter_frame = ttk.Frame(self.table_container)
+        self.filter_frame.pack(fill="x", pady=(0, PAD_MEDIUM))
 
-        ttk.Button(filter_frame, text="All",
+        ttk.Button(self.filter_frame, text="All",
                    command=lambda: self.apply_filter("ALL")).pack(side="left", padx=5)
 
-        ttk.Button(filter_frame, text="Most Used",
+        ttk.Button(self.filter_frame, text="Most Used",
                    command=lambda: self.apply_filter("MOST")).pack(side="left", padx=5)
 
-        ttk.Button(filter_frame, text="Recently Used",
+        ttk.Button(self.filter_frame, text="Recently Used",
                    command=lambda: self.apply_filter("RECENT")).pack(side="left", padx=5)
 
-        ttk.Button(filter_frame, text="Never Used",
+        ttk.Button(self.filter_frame, text="Never Used",
                    command=lambda: self.apply_filter("NEVER")).pack(side="left", padx=5)
-        
-        
+
         # ================= SEARCH =================
-        search_frame = ttk.Frame(filter_frame)
+        search_frame = ttk.Frame(self.filter_frame)
         search_frame.pack(side="right", padx=PAD_MEDIUM)
 
         self.search_var = tk.StringVar()
         self.search_var.trace("w", self.on_search)
 
-        ttk.Label(search_frame, text="Search:", font=FONT_BODY_BOLD).pack(side="left", padx=5)
+        ttk.Label(search_frame, text="Search:").pack(side="left", padx=5)
         ttk.Entry(search_frame, textvariable=self.search_var, width=25).pack(side="left")
 
         # ================= TABLE =================
@@ -79,9 +84,8 @@ class MedicineInventoryFrame(ttk.Frame):
             "Description": {"width": 250, "anchor": "w", "stretch": True}
         }
 
-        self.tree = create_table(self, columns, column_config)
+        self.tree = create_table(self.table_container, columns, column_config)
 
-        # Enable header sorting
         for col in columns:
             self.tree.heading(col, text=col,
                               command=lambda c=col: self.sort_by_column(c))
@@ -90,30 +94,71 @@ class MedicineInventoryFrame(ttk.Frame):
 
     # ================= LOAD DATA =================
     def load_data(self, query=None):
+        rows = self.db.search_medicines(query) if query else self.db.get_all_medicines()
+
+        # Empty state
+        if not rows:
+            self.show_empty_state()
+            return
+        else:
+            self.hide_empty_state()
+
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        rows = self.db.search_medicines(query) if query else self.db.get_all_medicines()
-
-        # Apply filter
         rows = self.filter_rows(rows)
 
-        # Apply sorting
         if self.sort_column:
             rows = self.sort_rows(rows)
 
         for i, row in enumerate(rows):
             tag = "even" if i % 2 == 0 else "odd"
             display_values = (
-                row[0],  # ID
-                row[1],  # Name
-                row[3],  # Times Used
+                row[0],
+                row[1],
+                row[3],
                 row[4] if row[4] else "-",
                 row[2] if row[2] else ""
             )
             self.tree.insert("", "end", values=display_values, tags=(tag,))
 
-    # ================= FILTER LOGIC =================
+    # ================= EMPTY STATE =================
+    def show_empty_state(self):
+        if self.table_container:
+            self.table_container.pack_forget()
+
+        if not self.empty_frame:
+            self.empty_frame = ttk.Frame(self)
+            self.empty_frame.pack(fill="both", expand=True)
+
+            ttk.Label(
+                self.empty_frame,
+                text="No Medicines Found",
+                style="SubTitle.TLabel"
+            ).pack(pady=(120, 20))
+
+            ttk.Button(
+                self.empty_frame,
+                text="Load Default Medicines",
+                style="Accent.TButton",
+                command=self.load_default_medicines
+            ).pack()
+
+        else:
+            self.empty_frame.pack(fill="both", expand=True)
+
+    def hide_empty_state(self):
+        if self.empty_frame:
+            self.empty_frame.pack_forget()
+
+        if self.table_container:
+            self.table_container.pack(fill="both", expand=True)
+
+    def load_default_medicines(self):
+        self.db.load_common_medicines()
+        self.load_data()
+
+    # ================= FILTER =================
     def apply_filter(self, filter_type):
         self.current_filter = filter_type
         self.load_data(self.search_var.get().strip())
@@ -132,7 +177,7 @@ class MedicineInventoryFrame(ttk.Frame):
 
         return rows
 
-    # ================= SORTING =================
+    # ================= SORT =================
     def sort_by_column(self, col):
         if self.sort_column == col:
             self.sort_reverse = not self.sort_reverse

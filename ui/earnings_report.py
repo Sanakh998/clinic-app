@@ -23,7 +23,7 @@ def show_earnings_report(app):
     # --- Title ---
     ttk.Label(
         container,
-        text="💰 Revenue Report",
+        text="Revenue Report",
         font=FONT_HEADER
     ).pack(anchor="w", pady=(0, PAD_MEDIUM))
 

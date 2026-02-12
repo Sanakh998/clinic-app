@@ -49,13 +49,13 @@ def show_patient_details(app, patient_id):
     btn_frame = ttk.Frame(info_frame)
     btn_frame.pack(fill="x", pady=(PAD_LARGE, 0))
     
-    ttk.Button(btn_frame, text="✏️ Edit Profile", 
+    ttk.Button(btn_frame, text="Edit Profile", 
                 command=lambda: app.edit_patient(lambda: app.open_patient_profile(patient_id), patient)).pack(side="left", padx=(0, PAD_SMALL))
     
-    ttk.Button(btn_frame, text="⎙ Print Report", 
+    ttk.Button(btn_frame, text="Print Report", 
                 command=lambda: app.print_profile(patient)).pack(side="left", padx=PAD_SMALL)
     
-    ttk.Button(btn_frame, text="✖️ Delete Profile", style="Danger.TButton",
+    ttk.Button(btn_frame, text="Delete Profile", style="Danger.TButton",
                 command=lambda: app.delete_patient_confirm(patient[0])).pack(side="left", padx=PAD_SMALL)
 
     ttk.Button(btn_frame, text="➕ Add New Visit", style="Accent.TButton",
