@@ -1,6 +1,9 @@
 from tkinter import ttk
 from utils.scrollable_frame import ScrollableFrame
-from config.config import COLOR_BG, COLOR_SURFACE
+from config.config import COLOR_SURFACE
+
+COLOR_ROW_ODD = COLOR_SURFACE
+COLOR_ROW_EVEN = "#f1f3f5"
 
 def create_table(parent, columns, column_config, scrollbar=True):
     if scrollbar:
@@ -46,7 +49,7 @@ def create_table(parent, columns, column_config, scrollbar=True):
 
     tree.pack(fill="both", expand=True)
 
-    tree.tag_configure("odd", background=COLOR_BG)
-    tree.tag_configure("even", background=COLOR_SURFACE)
+    tree.tag_configure("odd", background=COLOR_ROW_ODD)
+    tree.tag_configure("even", background=COLOR_ROW_EVEN)
 
     return tree

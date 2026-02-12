@@ -1,9 +1,8 @@
-
 import tkinter as tk
 from tkinter import ttk, messagebox
 from config.config import (
-    FONT_TITLE_SUB, FONT_HEADER, FONT_BODY,
-    COLOR_BG, COLOR_SURFACE, COLOR_PRIMARY, PAD_MEDIUM, PAD_SMALL, PAD_LARGE
+    FONT_HEADER, FONT_BODY, FONT_BODY_BOLD,
+    COLOR_BG, PAD_MEDIUM, PAD_LARGE
 )
 from ui.table_factory import create_table
 
@@ -13,32 +12,24 @@ class MedicineInventoryFrame(ttk.Frame):
         self.app = app
         self.db = app.db
         self.configure(padding=PAD_MEDIUM)
-        
+
+        self.sort_column = None
+        self.sort_reverse = False
+        self.current_filter = "ALL"
+
         self.setup_ui()
         self.load_data()
 
     def setup_ui(self):
-        # Top Bar: Title + Add Button + Search
         top_frame = ttk.Frame(self)
         top_frame.pack(fill="x", pady=(0, PAD_MEDIUM))
 
-        # Title
         lbl_title = ttk.Label(
-            top_frame, 
-            text="Medicine Inventory", 
+            top_frame,
+            text="Homeopathic Medicine Usage",
             style="SubTitle.TLabel"
         )
         lbl_title.pack(side="left")
-
-        # Search
-        search_frame = ttk.Frame(top_frame)
-        search_frame.pack(side="right", padx=PAD_MEDIUM)
-
-        self.search_var = tk.StringVar()
-        self.search_var.trace("w", self.on_search)
-        
-        ttk.Label(search_frame, text="Search:", font=FONT_HEADER).pack(side="left", padx=5)
-        ttk.Entry(search_frame, textvariable=self.search_var, width=25).pack(side="left")
 
         # Add Button
         btn_add = ttk.Button(
@@ -47,56 +38,138 @@ class MedicineInventoryFrame(ttk.Frame):
             command=self.open_add_dialog,
             style="Accent.TButton"
         )
-        btn_add.pack(side="right")
+        btn_add.pack(side="right", padx=PAD_MEDIUM)
 
-        # Table
-        columns = ("ID", "Name", "Type", "Quantity", "Price", "Description")
+
+        # ================= FILTER BUTTONS =================
+        filter_frame = ttk.Frame(self)
+        filter_frame.pack(fill="x", pady=(0, PAD_MEDIUM))
+
+        ttk.Button(filter_frame, text="All",
+                   command=lambda: self.apply_filter("ALL")).pack(side="left", padx=5)
+
+        ttk.Button(filter_frame, text="Most Used",
+                   command=lambda: self.apply_filter("MOST")).pack(side="left", padx=5)
+
+        ttk.Button(filter_frame, text="Recently Used",
+                   command=lambda: self.apply_filter("RECENT")).pack(side="left", padx=5)
+
+        ttk.Button(filter_frame, text="Never Used",
+                   command=lambda: self.apply_filter("NEVER")).pack(side="left", padx=5)
+        
+        
+        # ================= SEARCH =================
+        search_frame = ttk.Frame(filter_frame)
+        search_frame.pack(side="right", padx=PAD_MEDIUM)
+
+        self.search_var = tk.StringVar()
+        self.search_var.trace("w", self.on_search)
+
+        ttk.Label(search_frame, text="Search:", font=FONT_BODY_BOLD).pack(side="left", padx=5)
+        ttk.Entry(search_frame, textvariable=self.search_var, width=25).pack(side="left")
+
+        # ================= TABLE =================
+        columns = ("ID", "Name", "Times Used", "Last Used", "Description")
+
         column_config = {
             "ID": {"width": 50, "anchor": "center"},
-            "Name": {"width": 200, "anchor": "w"},
-            "Type": {"width": 100, "anchor": "center"},
-            "Quantity": {"width": 80, "anchor": "center"},
-            "Price": {"width": 80, "anchor": "e"},
+            "Name": {"width": 250, "anchor": "w"},
+            "Times Used": {"width": 120, "anchor": "center"},
+            "Last Used": {"width": 150, "anchor": "center"},
             "Description": {"width": 250, "anchor": "w", "stretch": True}
         }
-        self.tree = create_table(self, columns, column_config)
-        
 
-        
-        # Bind double click to edit
+        self.tree = create_table(self, columns, column_config)
+
+        # Enable header sorting
+        for col in columns:
+            self.tree.heading(col, text=col,
+                              command=lambda c=col: self.sort_by_column(c))
+
         self.tree.bind("<Double-1>", self.on_double_click)
 
+    # ================= LOAD DATA =================
     def load_data(self, query=None):
-        # Clear existing
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        if query:
-            rows = self.db.search_medicines(query)
+        rows = self.db.search_medicines(query) if query else self.db.get_all_medicines()
+
+        # Apply filter
+        rows = self.filter_rows(rows)
+
+        # Apply sorting
+        if self.sort_column:
+            rows = self.sort_rows(rows)
+
+        for i, row in enumerate(rows):
+            tag = "even" if i % 2 == 0 else "odd"
+            display_values = (
+                row[0],  # ID
+                row[1],  # Name
+                row[3],  # Times Used
+                row[4] if row[4] else "-",
+                row[2] if row[2] else ""
+            )
+            self.tree.insert("", "end", values=display_values, tags=(tag,))
+
+    # ================= FILTER LOGIC =================
+    def apply_filter(self, filter_type):
+        self.current_filter = filter_type
+        self.load_data(self.search_var.get().strip())
+
+    def filter_rows(self, rows):
+        if self.current_filter == "MOST":
+            return sorted(rows, key=lambda r: r[3], reverse=True)
+
+        elif self.current_filter == "RECENT":
+            return sorted(rows,
+                          key=lambda r: r[4] if r[4] else "",
+                          reverse=True)
+
+        elif self.current_filter == "NEVER":
+            return [r for r in rows if r[3] == 0]
+
+        return rows
+
+    # ================= SORTING =================
+    def sort_by_column(self, col):
+        if self.sort_column == col:
+            self.sort_reverse = not self.sort_reverse
         else:
-            rows = self.db.get_all_medicines()
+            self.sort_column = col
+            self.sort_reverse = False
 
-        for row in rows:
-            # row: (id, name, type, quantity, price, desc, created_at)
-            # Display: ID, Name, Type, Quantity, Price, Description
-            display_values = (row[0], row[1], row[2], row[3], f"{row[4]:.2f}", row[5])
-            self.tree.insert("", "end", values=display_values)
+        self.load_data(self.search_var.get().strip())
 
+    def sort_rows(self, rows):
+        col_index_map = {
+            "ID": 0,
+            "Name": 1,
+            "Times Used": 3,
+            "Last Used": 4,
+            "Description": 2
+        }
+
+        idx = col_index_map[self.sort_column]
+
+        return sorted(
+            rows,
+            key=lambda r: r[idx] if r[idx] is not None else "",
+            reverse=self.sort_reverse
+        )
+
+    # ================= SEARCH =================
     def on_search(self, *args):
-        query = self.search_var.get().strip()
-        self.load_data(query)
+        self.load_data(self.search_var.get().strip())
 
+    # ================= EDIT =================
     def on_double_click(self, event):
         item_id = self.tree.identify_row(event.y)
         if not item_id:
             return
-        
         values = self.tree.item(item_id, "values")
-        if values:
-            medicine_id = values[0]
-            # Fetch full details from DB to be sure
-            # Actually values has enough info for now except created_at which we don't edit
-            self.open_edit_dialog(values)
+        self.open_edit_dialog(values)
 
     def open_add_dialog(self):
         MedicineForm(self.app, self.db, callback=self.load_data)
@@ -114,7 +187,7 @@ class MedicineForm(tk.Toplevel):
 
         mode = "Edit" if medicine_data else "Add"
         self.title(f"{mode} Medicine")
-        self.geometry("400x500")
+        self.geometry("350x250")
         self.configure(padx=PAD_LARGE, pady=PAD_LARGE, bg=COLOR_BG)
         
         self.setup_form()
@@ -131,32 +204,15 @@ class MedicineForm(tk.Toplevel):
             pass
 
     def setup_form(self):
-        # Name
         ttk.Label(self, text="Medicine Name:", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
         self.entry_name = ttk.Entry(self, font=FONT_BODY)
         self.entry_name.pack(fill="x", pady=(0, 15))
+        self.entry_name.focus_set()
 
-        # Type
-        ttk.Label(self, text="Type:", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
-        self.entry_type = ttk.Combobox(self, values=["Dilution", "Mother Tincture", "Trituration", "Biochemic", "Ointment", "Drops", "Other"], font=FONT_BODY)
-        self.entry_type.pack(fill="x", pady=(0, 15))
-
-        # Quantity
-        ttk.Label(self, text="Quantity:", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
-        self.entry_qty = ttk.Entry(self, font=FONT_BODY)
-        self.entry_qty.pack(fill="x", pady=(0, 15))
-
-        # Price
-        ttk.Label(self, text="Price:", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
-        self.entry_price = ttk.Entry(self, font=FONT_BODY)
-        self.entry_price.pack(fill="x", pady=(0, 15))
-
-        # Description
         ttk.Label(self, text="Description:", font=FONT_HEADER).pack(anchor="w", pady=(0, 5))
         self.entry_desc = ttk.Entry(self, font=FONT_BODY)
         self.entry_desc.pack(fill="x", pady=(0, 15))
 
-        # Buttons
         btn_frame = ttk.Frame(self)
         btn_frame.pack(fill="x", pady=(20, 0))
 
@@ -172,55 +228,37 @@ class MedicineForm(tk.Toplevel):
 
     def populate_fields(self):
         if self.medicine_data:
-            # values: ID, Name, Type, Quantity, Price, Description
             self.entry_name.insert(0, self.medicine_data[1])
-            self.entry_type.set(self.medicine_data[2])
-            self.entry_qty.insert(0, self.medicine_data[3])
-            self.entry_price.insert(0, self.medicine_data[4])
-            
-            # Helper safely insert if description not empty
-            desc = self.medicine_data[5]
-            if desc and desc != "None":
-                self.entry_desc.insert(0, desc)
+            if self.medicine_data[4]:
+                self.entry_desc.insert(0, self.medicine_data[4])
 
     def save_medicine(self):
         name = self.entry_name.get().strip()
-        m_type = self.entry_type.get().strip()
-        qty = self.entry_qty.get().strip() or "0"
-        price = self.entry_price.get().strip() or "0.0"
         desc = self.entry_desc.get().strip()
 
         if not name:
             messagebox.showwarning("Validation", "Medicine Name is required.")
             return
 
-        try:
-            qty = int(qty)
-            price = float(price)
-        except ValueError:
-            messagebox.showerror("Validation", "Quantity must be integer and Price must be number.")
-            return
-
         if self.medicine_data:
-            # Update
             m_id = self.medicine_data[0]
-            success = self.db.update_medicine(m_id, name, m_type, qty, price, desc)
+            self.db.update_medicine(m_id, name, desc)
         else:
-            # Add
-            success = self.db.add_medicine(name, m_type, qty, price, desc)
+            self.db.add_medicine(name, desc)
 
-        if success:
+        self.callback()
+        self.destroy()
+
+    def delete_medicine(self):
+        if messagebox.askyesno("Confirm Delete", "Delete this medicine?"):
+            m_id = self.medicine_data[0]
+            self.db.delete_medicine(m_id)
             self.callback()
             self.destroy()
 
-    def delete_medicine(self):
-        if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this medicine?"):
-            m_id = self.medicine_data[0]
-            if self.db.delete_medicine(m_id):
-                self.callback()
-                self.destroy()
+
 
 def show_medicine_inventory(app):
     app.clear_content()
-    MedicineInventoryFrame(app.content_frame, app).pack(fill="both", expand=True)
-
+    inventory_frame = MedicineInventoryFrame(app.content_frame, app)
+    inventory_frame.pack(fill="both", expand=True)

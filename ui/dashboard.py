@@ -66,7 +66,8 @@ def build_recent_activity_section(parent, app):
         text="➕ New Patient", 
         style="Accent.TButton", # Highlighted
         command=app.open_patient_form,
-        width=15
+        width=15,
+        cursor="hand2"
     ).pack(side="left", padx=(0, PAD_SMALL))
 
     ttk.Button(
@@ -74,7 +75,8 @@ def build_recent_activity_section(parent, app):
         text="➕ New Visit", 
         style="Quick.TButton", # Or normal
         command=app.open_quick_visit,
-        width=15
+        width=15,
+        cursor="hand2"
     ).pack(side="left")
 
     # --- Activity Table ---
@@ -82,7 +84,7 @@ def build_recent_activity_section(parent, app):
     
     # Configure columns
     col_config = {
-        "Date": {"width": 150, "anchor": "w"},
+        "Date": {"width": 180, "anchor": "center"},
         "Patient": {"width": 200, "anchor": "w"},
         "Info": {"width": 100, "anchor": "center"}, # Gender/Age
         "Complaint": {"stretch": True, "anchor": "w"}
@@ -94,7 +96,8 @@ def build_recent_activity_section(parent, app):
     activity_data = app.db.get_recent_activity(limit=15)
 
     # Populate Table
-    for row in activity_data:
+    for i, row in enumerate(activity_data):
+        tag = "even" if i % 2 == 0 else "odd"
         # row: (visit_date, name, gender, age, complaints, patient_id)
         
         # Format Date
@@ -114,7 +117,7 @@ def build_recent_activity_section(parent, app):
 
         display_row = (date_str, row[1], info_str, row[4])
         
-        tree.insert("", "end", values=display_row, tags=("even",)) # We can alternate tags if we want
+        tree.insert("", "end", values=display_row, tags=(tag,)) # We can alternate tags if we want
 
     # Bind Double Click -> Open Patient Profile
     def on_row_click(event):
@@ -136,28 +139,79 @@ def build_recent_activity_section(parent, app):
 # ==========================================
 
 def create_dashboard_card(parent, column, icon, title, value, color, on_click=None):
-    # outer = ttk.Frame(parent, padding=2)
-    # outer.grid(row=0, column=column, padx=PAD_SMALL, sticky="nsew")
-    outer = ttk.Frame(parent, padding=(2, 2), style="Outer.TFrame")
+
+    # Outer wrapper (spacing)
+    outer = ttk.Frame(parent, style="Outer.TFrame", padding=1)
     outer.grid(row=0, column=column, padx=PAD_SMALL, sticky="nsew")
 
-    card = ttk.Frame(outer, style="Card.TFrame", padding=PAD_LARGE)
+    # Main card
+    card = tk.Frame(
+        outer,
+        bg=COLOR_SURFACE,
+        bd=1,
+        relief="solid"
+    )
     card.pack(fill="both", expand=True)
 
-    tk.Label(card, text=icon, font=(FONT_FAMILY, 28),
-             fg=color, bg=COLOR_SURFACE).pack(anchor="w")
+    # Left color strip (🔥 MAZA YAHAN SE AATA HAI)
+    strip = tk.Frame(card, bg=color, width=6)
+    strip.pack(side="left", fill="y")
 
-    tk.Label(card, text=value, font=(FONT_FAMILY, 22, "bold"),
-             fg=COLOR_TEXT_MAIN, bg=COLOR_SURFACE).pack(anchor="w")
+    content = tk.Frame(card, bg=COLOR_SURFACE, padx=PAD_LARGE, pady=PAD_LARGE)
+    content.pack(side="left", fill="both", expand=True)
 
-    tk.Label(card, text=title, font=FONT_SMALL_ITALIC,
-             fg=COLOR_TEXT_MUTED, bg=COLOR_SURFACE).pack(anchor="w")
-    
+    # Icon
+    tk.Label(
+        content,
+        text=icon,
+        font=(FONT_FAMILY, 26),
+        fg=color,
+        bg=COLOR_SURFACE
+    ).pack(anchor="w")
+
+    # Value (main focus)
+    tk.Label(
+        content,
+        text=value,
+        font=(FONT_FAMILY, 22, "bold"),
+        fg=COLOR_TEXT_MAIN,
+        bg=COLOR_SURFACE
+    ).pack(anchor="w", pady=(4, 0))
+
+    # Title (muted)
+    tk.Label(
+        content,
+        text=title,
+        font=FONT_SMALL_ITALIC,
+        fg=COLOR_TEXT_MUTED,
+        bg=COLOR_SURFACE
+    ).pack(anchor="w")
+
+    # --------------------
+    # Hover + Click Effects
+    # --------------------
+    def on_enter(e):
+        card.config(bg=COLOR_ACCENT)
+        content.config(bg=COLOR_ACCENT)
+        for w in content.winfo_children():
+            w.config(bg=COLOR_ACCENT)
+        card.config(cursor="hand2")
+
+    def on_leave(e):
+        card.config(bg=COLOR_SURFACE)
+        content.config(bg=COLOR_SURFACE)
+        for w in content.winfo_children():
+            w.config(bg=COLOR_SURFACE)
+        card.config(cursor="")
+
+    card.bind("<Enter>", on_enter)
+    card.bind("<Leave>", on_leave)
+
     if on_click:
         card.bind("<Button-1>", lambda e: on_click())
-        for child in card.winfo_children():
+        content.bind("<Button-1>", lambda e: on_click())
+        for child in content.winfo_children():
             child.bind("<Button-1>", lambda e: on_click())
-
 
 
 def on_tree_double_click(app, tree):

@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from config.config import (PAD_SMALL, PAD_MEDIUM)
+from config.config import (PAD_SMALL, PAD_MEDIUM, COLOR_SURFACE, COLOR_ACCENT)
 
 def setup_sidebar(app):
     """Left sidebar styled from config colors, with active button handling"""
@@ -35,14 +35,31 @@ def setup_sidebar(app):
             app.sidebar_frame,
             text=text,
             command=lambda c=command, t=text: on_sidebar_click(app, t, c),
-            style="Sidebar.TButton"
+            style="Sidebar.TButton",
+            cursor="hand2"
         )
         btn.pack(fill="x", pady=2)
-        app.sidebar_buttons[text] = btn
+        btn.bind("<Enter>", lambda e, b=btn: on_hover_enter(app, b))
+        btn.bind("<Leave>", lambda e, b=btn: on_hover_leave(app, b))
 
+        app.sidebar_buttons[text] = btn
     # default active
 
     set_active_sidebar(app, "🏠 Dashboard")
+
+
+# -----------------------------------
+# Hover Effects
+# -----------------------------------
+def on_hover_enter(app, button):
+    if button != app.sidebar_buttons.get(app.active_sidebar):
+        button.configure(style="SidebarHover.TButton")
+
+
+def on_hover_leave(app, button):
+    if button != app.sidebar_buttons.get(app.active_sidebar):
+        button.configure(style="Sidebar.TButton")
+
 
 
 def on_sidebar_click(app, label, callback):

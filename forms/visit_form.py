@@ -148,6 +148,7 @@ class VisitForm(tk.Toplevel):
         self.txt_medicine.bind("<Down>", self.focus_suggestion)
 
 
+
         # ================= Focus & Enter Logic =================
 
         # Form open hote hi cursor Date field mein
@@ -285,7 +286,7 @@ class VisitForm(tk.Toplevel):
             self.txt_medicine.focus_set()
             
         return "break"
-
+    
     def save_visit(self):
         date_str = self.date_var.get()
         complaints = self.txt_complaints.get("1.0", tk.END).strip()
@@ -297,6 +298,25 @@ class VisitForm(tk.Toplevel):
             messagebox.showwarning("Validation", "Please enter at least history or medicine.")
             self.txt_complaints.focus_set()
             return
+        # ===== Process all medicines safely =====
+
+        # ===== Smart Medicine Processing (No Duplicate Per Visit) =====
+        if medicine:
+            raw_meds = [m.strip() for m in medicine.split(",") if m.strip()]
+
+            # Normalize (lowercase for comparison but keep original for DB)
+            unique_meds = {}
+            for med in raw_meds:
+                key = med.lower()
+                if key not in unique_meds:
+                    unique_meds[key] = med  # preserve original formatting
+
+            for med in unique_meds.values():
+                self.db.create_or_increment_medicine(med)
+
+            # Refresh autocomplete list
+            self.medicines_list = [m[1] for m in self.db.get_all_medicines()]
+
 
         if self.visit_data:
             success = self.db.update_visit(

@@ -27,6 +27,23 @@ class DatabaseManager:
         """Initializes the database schema if it doesn't exist."""
         conn = self.get_connection()
         cursor = conn.cursor()
+        
+        # Users Table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT DEFAULT 'admin',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Insert default user if not exists
+        cursor.execute("SELECT COUNT(*) FROM users")
+        if cursor.fetchone()[0] == 0:
+            default_hash = hashlib.sha256("admin".encode()).hexdigest()
+            cursor.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", ("admin", default_hash))
         # Patients Table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS patients (
@@ -57,37 +74,70 @@ class DatabaseManager:
         # Medicines Table (Inventory)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS medicines (
-                medicine_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT UNIQUE NOT NULL,
-                type TEXT,
-                quantity INTEGER DEFAULT 0,
-                price REAL DEFAULT 0.0,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
                 description TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                times_used INTEGER DEFAULT 0,
+                last_used DATETIME,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         ''')
-        
-        # Users Table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                role TEXT DEFAULT 'admin',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        
-        # Insert default user if not exists
-        cursor.execute("SELECT COUNT(*) FROM users")
-        if cursor.fetchone()[0] == 0:
-            default_hash = hashlib.sha256("admin".encode()).hexdigest()
-            cursor.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", ("admin", default_hash))
         
         conn.commit()
         conn.close()
+    
+    # ============================================
+    # USER AUTHENTICATION
+    # ============================================
 
-    # --- Patient Operations ---
+    def verify_login(self, username, password):
+        """Verify user login credentials."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        cursor.execute("SELECT * FROM users WHERE username = ? AND password_hash = ?", (username, password_hash))
+        user = cursor.fetchone()
+        conn.close()
+        return user is not None
+
+    def change_password(self, username, old_password, new_password):
+        """Change user password after verifying old password."""
+        if not self.verify_login(username, old_password):
+            return False
+        
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        new_hash = hashlib.sha256(new_password.encode()).hexdigest()
+        try:
+            cursor.execute("UPDATE users SET password_hash = ? WHERE username = ?", (new_hash, username))
+            conn.commit()
+            return True
+        except sqlite3.Error:
+            return False
+        finally:
+            conn.close()
+
+    def add_user(self, username, password, role='admin'):
+        """Add a new user."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        try:
+            cursor.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", (username, password_hash, role))
+            conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            # Username already exists
+            return False
+        except sqlite3.Error:
+            return False
+        finally:
+            conn.close()
+            
+    # =====================================
+    # PATIENT OPERATIONS
+    # =====================================
+
     def add_patient(self, name, phone, age, gender, address, notes):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -142,28 +192,6 @@ class DatabaseManager:
         conn.close()
         return rows
 
-    def get_recent_interacted_patients(self, limit=20):
-        conn = self.get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT 
-                p.patient_id,
-                p.name,
-                p.phone,
-                MAX(v.visit_date) as last_visit
-            FROM patients p
-            LEFT JOIN visits v ON p.patient_id = v.patient_id
-            GROUP BY p.patient_id
-            ORDER BY last_visit DESC NULLS LAST
-            LIMIT ?
-        """, (limit,))
-
-        rows = cursor.fetchall()
-        conn.close()
-        return rows
-
-
     def get_recent_activity(self, limit=15):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -186,7 +214,6 @@ class DatabaseManager:
         conn.close()
         return rows
 
-
     def get_all_patients(self):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -194,6 +221,22 @@ class DatabaseManager:
         rows = cursor.fetchall()
         conn.close()
         return rows
+    
+    def get_new_patients_today(self):
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        today = datetime.date.today().strftime("%Y-%m-%d")
+
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM patients
+            WHERE DATE(created_at) = ?
+        """, (today,))
+
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
     
     def get_total_patients_count(self):
         conn = self.get_connection()
@@ -224,15 +267,18 @@ class DatabaseManager:
         conn.close()
         return row
 
-    # --- Medicine Operations ---
-    def add_medicine(self, name, type, quantity, price, description):
+    # ============================================
+    # MEDICINE OPERATIONS
+    # ============================================
+
+    def add_medicine(self, name, description=""):
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute('''
-                INSERT INTO medicines (name, type, quantity, price, description)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (name, type, quantity, price, description))
+            cursor.execute("""
+                INSERT INTO medicines (name, description)
+                VALUES (?, ?)
+            """, (name, description))
             conn.commit()
             return True
         except sqlite3.Error as e:
@@ -241,15 +287,15 @@ class DatabaseManager:
         finally:
             conn.close()
 
-    def update_medicine(self, m_id, name, type, quantity, price, description):
+    def update_medicine(self, m_id, name, description):
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute('''
-                UPDATE medicines 
-                SET name=?, type=?, quantity=?, price=?, description=?
-                WHERE medicine_id=?
-            ''', (name, type, quantity, price, description, m_id))
+            cursor.execute("""
+                UPDATE medicines
+                SET name = ?, description = ?
+                WHERE medicine_id = ?
+            """, (name, description, m_id))
             conn.commit()
             return True
         except sqlite3.Error as e:
@@ -262,7 +308,10 @@ class DatabaseManager:
         conn = self.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute('DELETE FROM medicines WHERE medicine_id = ?', (m_id,))
+            cursor.execute(
+                "DELETE FROM medicines WHERE medicine_id = ?",
+                (m_id,)
+            )
             conn.commit()
             return True
         except sqlite3.Error as e:
@@ -274,7 +323,11 @@ class DatabaseManager:
     def get_all_medicines(self):
         conn = self.get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM medicines ORDER BY name ASC")
+        cursor.execute("""
+            SELECT medicine_id, name, description, times_used, last_used
+            FROM medicines
+            ORDER BY times_used DESC, name ASC
+        """)
         rows = cursor.fetchall()
         conn.close()
         return rows
@@ -283,16 +336,56 @@ class DatabaseManager:
         conn = self.get_connection()
         cursor = conn.cursor()
         search_term = f"%{query}%"
-        cursor.execute('''
-            SELECT * FROM medicines 
-            WHERE name LIKE ? 
-            ORDER BY name ASC
-        ''', (search_term,))
+        cursor.execute("""
+            SELECT medicine_id, name, description, times_used, last_used
+            FROM medicines
+            WHERE name LIKE ?
+            ORDER BY times_used DESC
+        """, (search_term,))
         rows = cursor.fetchall()
         conn.close()
         return rows
+    
+    def create_or_increment_medicine(self, name):
+        conn = self.get_connection()
+        cursor = conn.cursor()
 
-    # --- Visit Operations ---
+        try:
+            cursor.execute(
+                "SELECT medicine_id FROM medicines WHERE name = ?",
+                (name,)
+            )
+            result = cursor.fetchone()
+
+            if result:
+                medicine_id = result[0]
+                cursor.execute("""
+                    UPDATE medicines
+                    SET times_used = times_used + 1,
+                        last_used = CURRENT_TIMESTAMP
+                    WHERE medicine_id = ?
+                """, (medicine_id,))
+            else:
+                cursor.execute("""
+                    INSERT INTO medicines (name, times_used, last_used)
+                    VALUES (?, 1, CURRENT_TIMESTAMP)
+                """, (name,))
+
+            conn.commit()
+            return True
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Error", str(e))
+            return False
+
+        finally:
+            conn.close()
+
+
+    # ============================================
+    # VISIT OPERATIONS
+    # ============================================
+
     def add_visit(self, patient_id, complaints, medicine, fees, remarks, date_str):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -396,8 +489,6 @@ class DatabaseManager:
         conn.close()
         return rows
 
-
-
     def get_today_visits(self):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -436,24 +527,22 @@ class DatabaseManager:
             return False
         finally:
             conn.close()
-
-    def export_patients_csv(self, filepath):
+    
+    def get_visits_count_map(self):
         conn = self.get_connection()
         cursor = conn.cursor()
-        try:
-            cursor.execute("SELECT * FROM patients")
-            rows = cursor.fetchall()
-            
-            with open(filepath, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
-                writer.writerow(['ID', 'Name', 'Phone', 'Age', 'Gender', 'Address', 'Notes', 'Created At'])
-                writer.writerows(rows)
-            return True
-        except Exception as e:
-            messagebox.showerror("Export Error", str(e))
-            return False
-        finally:
-            conn.close()
+        cursor.execute("""
+            SELECT patient_id, COUNT(*) 
+            FROM visits 
+            GROUP BY patient_id
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+        return {pid: cnt for pid, cnt in rows}
+
+    # ============================================
+    # STATISTICS & REPORTS
+    # ============================================
 
     def get_today_earnings(self):
         conn = self.get_connection()
@@ -470,35 +559,7 @@ class DatabaseManager:
         total = cursor.fetchone()[0]
         conn.close()
         return total or 0
-
-    def get_new_patients_today(self):
-        conn = self.get_connection()
-        cursor = conn.cursor()
-
-        today = datetime.date.today().strftime("%Y-%m-%d")
-
-        cursor.execute("""
-            SELECT COUNT(*)
-            FROM patients
-            WHERE DATE(created_at) = ?
-        """, (today,))
-
-        count = cursor.fetchone()[0]
-        conn.close()
-        return count
     
-    def get_visits_count_map(self):
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT patient_id, COUNT(*) 
-            FROM visits 
-            GROUP BY patient_id
-        """)
-        rows = cursor.fetchall()
-        conn.close()
-        return {pid: cnt for pid, cnt in rows}
-
     def get_month_earnings(self, year, month):
         conn = self.get_connection()
         cursor = conn.cursor()
@@ -527,7 +588,6 @@ class DatabaseManager:
         total = cursor.fetchone()[0]
         conn.close()
         return total or 0
-
 
     def get_visits_by_date_range(self, start_date, end_date):
         """
@@ -566,85 +626,24 @@ class DatabaseManager:
         conn.close()
         return total or 0
 
-    # --- User Authentication ---
-    def verify_login(self, username, password):
-        """Verify user login credentials."""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
-        cursor.execute("SELECT * FROM users WHERE username = ? AND password_hash = ?", (username, password_hash))
-        user = cursor.fetchone()
-        conn.close()
-        return user is not None
+    # ===========================================
+    # DATA EXPORT
+    # ===========================================
 
-    def change_password(self, username, old_password, new_password):
-        """Change user password after verifying old password."""
-        if not self.verify_login(username, old_password):
-            return False
-        
+    def export_patients_csv(self, filepath):
         conn = self.get_connection()
         cursor = conn.cursor()
-        new_hash = hashlib.sha256(new_password.encode()).hexdigest()
         try:
-            cursor.execute("UPDATE users SET password_hash = ? WHERE username = ?", (new_hash, username))
-            conn.commit()
+            cursor.execute("SELECT * FROM patients")
+            rows = cursor.fetchall()
+            
+            with open(filepath, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(['ID', 'Name', 'Phone', 'Age', 'Gender', 'Address', 'Notes', 'Created At'])
+                writer.writerows(rows)
             return True
-        except sqlite3.Error:
+        except Exception as e:
+            messagebox.showerror("Export Error", str(e))
             return False
         finally:
             conn.close()
-
-    def add_user(self, username, password, role='admin'):
-        """Add a new user."""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
-        try:
-            cursor.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", (username, password_hash, role))
-            conn.commit()
-            return True
-        except sqlite3.IntegrityError:
-            # Username already exists
-            return False
-        except sqlite3.Error:
-            return False
-        finally:
-            conn.close()
-            
-    def get_visits_stats(self, days=30):
-        """
-        Returns a list of tuples (date_str, count) for the last `days`.
-        Ensures all dates in the range are present, filling missing ones with 0.
-        """
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        # SQLite doesn't have a built-in sequence generator for dates easily available 
-        # without extensions or recursive CTEs (available in modern SQLite).
-        # We will fetch grouped data and fill gaps in Python for simplicity and compatibility.
-        
-        start_date = (datetime.date.today() - datetime.timedelta(days=days-1)).strftime("%Y-%m-%d")
-        
-        cursor.execute("""
-            SELECT DATE(visit_date) as day, COUNT(*)
-            FROM visits
-            WHERE DATE(visit_date) >= ?
-            GROUP BY day
-            ORDER BY day
-        """, (start_date,))
-        
-        rows = dict(cursor.fetchall())
-        conn.close()
-        
-        # Fill in missing dates
-        stats = []
-        current = datetime.date.today() - datetime.timedelta(days=days-1)
-        end = datetime.date.today()
-        
-        while current <= end:
-            day_str = current.strftime("%Y-%m-%d")
-            count = rows.get(day_str, 0)
-            stats.append((day_str, count))
-            current += datetime.timedelta(days=1)
-            
-        return stats

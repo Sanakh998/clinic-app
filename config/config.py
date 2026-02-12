@@ -20,7 +20,7 @@ FONT_TITLE = ("Segoe UI", 20, "bold")
 # Primary Brand Color (Trustworthy Blue)
 COLOR_PRIMARY = "#0056b3"       
 # Lighter shade for selections/hovers
-COLOR_ACCENT = "#e7f1ff"        
+COLOR_ACCENT = "#e0eaf7"        
 # Background color for main window
 COLOR_BG = "#f8f9fa"            
 # Pure white for cards/containers

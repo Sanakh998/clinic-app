@@ -180,23 +180,6 @@ class MainApp(tk.Tk):
             if self.db.export_patients_csv(filepath):
                 messagebox.showinfo("Export", "Data exported successfully.")
 
-    # def load_visits(self, patient_id):
-    #     # Clear existing
-    #     for widget in self.visits_container.scrollable_frame.winfo_children():
-    #         widget.destroy()
-
-    #     visits = self.db.get_visits(patient_id)
-        
-    #     if not visits:
-    #         empty_frame = ttk.Frame(self.visits_container.scrollable_frame, padding=PAD_XL)
-    #         empty_frame.pack(fill="x", expand=True)
-    #         ttk.Label(empty_frame, text="No visits recorded yet.", font=FONT_BODY_BOLD, foreground=COLOR_TEXT_MUTED).pack()
-    #         ttk.Label(empty_frame, text="Click 'Add New Visit' to begin consultation.", font=FONT_SMALL_ITALIC).pack()
-    #         return
-
-    #     for v in visits:
-    #         self.create_visit_card(v)
-
     def delete_patient_confirm(self, patient_id):
         if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this patient and ALL their history?\nThis cannot be undone."):
             if self.db.delete_patient(patient_id):
